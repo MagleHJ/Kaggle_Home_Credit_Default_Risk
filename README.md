@@ -1,6 +1,6 @@
 # Kaggle_Home_Credit_Default_Risk
 
-## Description
+## 描述
 
 Many people struggle to get loans due to insufficient or non-existent credit histories. And, unfortunately, this population is often taken advantage of by untrustworthy lenders.
 
@@ -10,7 +10,32 @@ Many people struggle to get loans due to insufficient or non-existent credit his
 
 While Home Credit is currently using various statistical and machine learning methods to make these predictions, they're challenging Kagglers to help them unlock the full potential of their data. Doing so will ensure that clients capable of repayment are not rejected and that loans are given with a principal, maturity, and repayment calendar that will empower their clients to be successful.
 
-## Data
+## 数据
 
 ![Data](https://storage.googleapis.com/kaggle-media/competitions/home-credit/home_credit.png)
+
+## 工作进展
+
+- [ ] 构建自动化测试框架
+- [ ] 探索性分析
+- [ ] 特征工程
+
+## 提交记录
+
+### baseline.csv
+
+简单处理，具体如下：
+
+- 使用application表
+- 对Object型变量做One-hot处理
+- DAYS_EMPLOYED字段缺失值修改为np.NAN（原数据中为365,243）
+- 使用lightGBM分类器
+- 5折正交化测试
+
+结果
+
+```
+Local Full AUC score 0.761810
+Kaggle Public Score 0.751
+```
 
