@@ -13,7 +13,11 @@ def get_model(df, feats):
 # ------------------
 # 模型
 # ------------------
+
+
 from lightgbm import LGBMClassifier
+
+
 def lightgbm(df, feats):
     train_df = df[df[config.TARGET].notnull()]
     test_df = df[df[config.TARGET].isnull()]
@@ -68,7 +72,11 @@ def lightgbm(df, feats):
 # ---------------------
 
 # K-Fold
+
+
 from sklearn.model_selection import KFold, StratifiedKFold
+
+
 def kflod(df, feats):
     target = config.TARGET
     if config.STRATIFIED:

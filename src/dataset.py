@@ -5,12 +5,13 @@ import pandas as pd
 from utils import timer
 import utils
 import gc
+import config
 
 # -------------------
 # 数据加载函数
 # 自动适应文件类型
 # -------------------
-def get_data(file_path, num_rows, msg = None):
+def get_data(file_path, num_rows=None, msg = None):
     '''Method load_data
     数据加载函数
     '''
@@ -26,8 +27,8 @@ def get_data(file_path, num_rows, msg = None):
 # 数据加载
 # 按具体项目定制
 # ------------------
-def load_data(debug=False, nan_as_category = True):
-    nrows = 10000 if debug else None
+def load_data():
+    nrows = 10000 if config.DEBUG else None
     # 加载数据集
     ## load application.csv
     df = get_data('../input/application_train.csv', nrows)
@@ -36,9 +37,8 @@ def load_data(debug=False, nan_as_category = True):
     df = df.append(test_df).reset_index(drop=True)
     del test_df
     gc.collect()
-    ## load others
+    ## load bureau.csv/bureau_balance.csv
+    bru = get_data('../input/bureau.csv', nrows)
+    brub = get_data('../input/bureau_balance.csv', nrows)
 
-    return df
-
-if __name__ == '__main__':
-    print(load_data(True))
+    return (df, bru, brub)

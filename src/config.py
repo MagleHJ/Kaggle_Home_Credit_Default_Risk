@@ -2,6 +2,8 @@
 # 配置文件
 # ---------------------
 
+DEBUG = False
+
 TARGET = 'TARGET'
 RECORD_ID_FEILD = 'SK_ID_CURR'
 SUBMISSION_FILE_NAME = 'submission.csv'
