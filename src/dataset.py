@@ -41,4 +41,16 @@ def load_data():
     bru = get_data('../input/bureau.csv', nrows)
     brub = get_data('../input/bureau_balance.csv', nrows)
 
-    return (df, bru, brub)
+    # load previous_applications.csv
+    pre_app = get_data('../input/previous_application.csv')
+
+    # load POS_CASH_balance.csv
+    pos = pd.read_csv('../input/POS_CASH_balance.csv')
+
+    # load installments_payments.csv
+    ins = pd.read_csv('../input/installments_payments.csv') 
+
+    # load credit_card_balance.csv
+    cc = pd.read_csv('../input/credit_card_balance.csv') 
+
+    return (df, bru, brub, pre_app, pos, ins, cc)
