@@ -4,3 +4,5 @@
 *.pyc
 *.iml
 *.code-workspace
+src/.ipynb_checkpoints/explorer-checkpoint.ipynb
+src/xxq/.ipynb_checkpoints/EDA-checkpoint.ipynb
