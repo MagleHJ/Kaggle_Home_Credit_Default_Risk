@@ -6,3 +6,6 @@
 *.code-workspace
 src/.ipynb_checkpoints/explorer-checkpoint.ipynb
 src/xxq/.ipynb_checkpoints/EDA-checkpoint.ipynb
+src/.ipynb_checkpoints/feature_processing-checkpoint.ipynb
+src/.ipynb_checkpoints/main-checkpoint.ipynb
+src/.ipynb_checkpoints/preprocessing-checkpoint.ipynb

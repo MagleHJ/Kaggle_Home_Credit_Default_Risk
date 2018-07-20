@@ -47,7 +47,7 @@ def category_analysis(dataset, feature, filename, picpath, label = 'TARGET'):
                 file.write('* ...\n')
 
             file.write('\n')
-            file.write("缺失数量：%d(%.2f%%)\n" % (N - info['count'], (N - info['count'])/N))
+            file.write("缺失数量：%d(%.2f%%)\n" % (N - info['count'], (N - info['count'])/N*100))
             file.write("频率最大的是：%s\n" % info['top'])
             file.write("### 频率图\n")
             file.write("![%s](%s)\n" % (feature, picpath))
@@ -62,7 +62,7 @@ def numerical_analysis(dataset, feature, filename, picpath, label = 'TARGET'):
             file.write("## %s(数值型变量)\n" % feature)
             file.write("### 统计量\n")
             file.write("取值范围：%.2f ~ %.2f\n" % (info['min'], info['max']))
-            file.write("缺失数量：%d(%.2f%%)\n" % (N - info['count'], (N - info['count'])/N))
+            file.write("缺失数量：%d(%.2f%%)\n" % (N - info['count'], (N - info['count'])/N*100))
             file.write("均值：%.2f\t\t中位数：%.2f\n" % (info['mean'], info['median']))
             file.write("标准差：%.2f\t\t绝对离差：%.2f\n" % (info['std'], info['mad']))
             file.write("偏度：%.2f\t\t峰度：%.2f\n" % (info['skew'], info['kurt']))
@@ -99,7 +99,7 @@ def category_visual(dataset, feature, filename, label='TARGET'):
     y_rate = []
     for target, rcd in dataset.groupby(feature):
         x.append(target)
-        y.append(len(rcd[rcd[label]==1]))
+        y.append(len(rcd))
         y_rate.append(len(rcd[rcd[label]==1])/len(rcd))
         del rcd
     plt.figure(figsize=[12, 6])

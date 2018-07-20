@@ -3,7 +3,7 @@ import numpy as np
 import utils
 import config
 import gc
-
+from pomegranate import BayesianNetwork
 
 # -----------------
 # 特征工程函数
@@ -17,8 +17,7 @@ def feature_engineering(data_list):
     gc.collect()
 
     with utils.timer('Process application'):
-        df['DAYS_EMPLOYED'].replace(365243, np.nan, inplace= True)
-        df, cat_cols = utils.one_hot_encoder(df, config.NAN_AS_CAtEGORY)
+        df = get_feature_from_app(df)
 
     with utils.timer('Process bureau & balance'):
         bru_agg = get_feature_from_bru(bru, brub)
@@ -42,6 +41,91 @@ def feature_engineering(data_list):
     
     return df
 
+def get_feature_from_app(df):
+
+    # 合并
+    df['WEEKDAY_APPR_PROCESS_START_MAPPED'] = df['WEEKDAY_APPR_PROCESS_START'].map({'SUNDAY':'1','SATURDAY':'1','MONDAY':'1',
+                                                                              'THURSDAY':'2','FRIDAY':'2','WEDNESDAY':'2',
+                                                                              'TUESDAY':'3'})
+    df['HOUR_APPR_PROCESS_START_MAPPED'] = df['HOUR_APPR_PROCESS_START'].apply(lambda hour:'worktime' if(hour>=9 and hour<=21) else 'sleeptime')
+    df['NAME_TYPE_SUITE_MAPPED'] = df['NAME_TYPE_SUITE'].map({'Family':'Family','Children':'Family',
+                                                                                    'Unaccompanied':'Partner','Spouse, partner':'Partner',
+                                                                                    'Group of people':'Partner',
+                                                                                    'Other_A':'Other','Other_B':'Other'})
+    df['WALLSMATERIAL_MODE_MAPPED'] = df['WALLSMATERIAL_MODE'].replace(['Stone, brick', 'Others', 'Mixed', 'Block', 'Panel'], ['General']*5)
+    df['NAME_HOUSING_TYPE_MAPPED'] = df['NAME_HOUSING_TYPE'].map({'Rented apartment':'No house','With parents':'No house',
+                                                                'Office apartment':'Office',
+                                                                'House / apartment':'Owner','Municipal apartment':'Owner','Co-op apartment':'Owner'})
+    #NAME_EDUCATION_TYPE
+    df['NAME_EDUCATION_TYPE_MAPPED'] = df['NAME_EDUCATION_TYPE'].replace({'Academic degree':'Higher education'})
+    degree_mapDict = {"Lower secondary":0,"Secondary / secondary special":1,"Incomplete higher":2,"Higher education":3}
+    df['NAME_EDUCATION_TYPE_MAPPED'] = df['NAME_EDUCATION_TYPE_MAPPED'].map(degree_mapDict)
+    #NAME_FAMILY_STATUS
+    df['NAME_FAMILY_STATUS_MAPPED'] = df['NAME_FAMILY_STATUS'].replace({'Unknown':'married'})
+    #将孩子数量3个以及3个以上的归为一类
+    df['CNT_CHILDREN_NAPPED'] = df['CNT_CHILDREN'].apply(lambda x:3 if x>=3 else x)
+    #NAME_INCOME_TYPE
+    df['NAME_INCOME_TYPE_MAPPED'] = df['NAME_INCOME_TYPE'].replace({'Student':'Unemployed','Maternity leave':'Unemployed','Businessman':'Commercial associate'})
+    #NAME_INCOME_TYPE是Pensioner，Unemployed 另OCCUPATION_TYPE和ORGANIZATION_TYPE为 no job
+    df.loc[df['NAME_INCOME_TYPE'].isin(['Pensioner','Unemployed']),['OCCUPATION_TYPE','ORGANIZATION_TYPE']]='no job'
+    #采用BN预测填补CCUPATION_TYPE 
+    miss_data=df.loc[df['OCCUPATION_TYPE'].isnull()]
+    complete_data=df[df['OCCUPATION_TYPE'].notnull()]
+    miss_data['OCCUPATION_TYPE'].replace({np.nan:None},inplace=True)#将NaN格式转化成None
+    bn_model = BayesianNetwork.from_samples(complete_data[['NAME_INCOME_TYPE','ORGANIZATION_TYPE','OCCUPATION_TYPE']], algorithm='exact-dp')
+    predict = bn_model.predict(miss_data[['NAME_INCOME_TYPE','ORGANIZATION_TYPE','OCCUPATION_TYPE']].values.tolist())
+    miss_data.loc[:,['OCCUPATION_TYPE']] = [each[-1] for each in predict]
+    df=pd.concat([complete_data,miss_data])#将填补后的数据集合并
+    df['OCCUPATION_TYPE'].replace({'Managers':'Core staff',"Drivers":'unstable','Cleaning staff':'unstable',
+                                                'Cooking staff':'unstable','Security staff':'unstable','Waiters/barmen staff':'unstable',
+                                                'Secretaries':'High skill tech staff','IT staff':'High skill tech staff',
+                                                'HR staff':'High skill tech staff','Realty agents':'High skill tech staff',
+                                                'Medicine staff':'High skill tech staff','Private service staff':'High skill tech staff'},inplace=True)
+    #工龄
+    df['gongling']=0
+    df.loc[df['DAYS_EMPLOYED']== 365243,'gongling']='no job'
+    df.loc[df['DAYS_EMPLOYED']< -2400,'gongling']='long'
+    df.loc[(df['DAYS_EMPLOYED']>= -2400) & (df['DAYS_EMPLOYED']< 1),'gongling']='short'
+    #私人电话邮件提供数量
+    df['FLAG_MOBIL'].replace({0:1},inplace=True)
+    per_phone_cols=['FLAG_MOBIL',  'FLAG_PHONE', 'FLAG_EMAIL']
+    df['NUM_PER_PHONE_PROVIDED']=df.loc[:,per_phone_cols].sum(axis=1)
+    #工作相关电话提供数量
+    wor_phone_cols=[  'FLAG_EMP_PHONE', 'FLAG_WORK_PHONE']
+    df['NUM_WOR_PHONE_PROVIDED']=df.loc[:,wor_phone_cols].sum(axis=1)
+    phone_cols=['FLAG_MOBIL', 'FLAG_EMP_PHONE', 'FLAG_WORK_PHONE', 'FLAG_CONT_MOBILE', 'FLAG_PHONE', 'FLAG_EMAIL']
+    df.drop( phone_cols,axis = 1,inplace=True)
+
+    # 提取
+    df['NUM_DIFF_IN_CITY_LEVEL'] = df['REG_CITY_NOT_LIVE_CITY'] + df['REG_CITY_NOT_WORK_CITY'] + df['LIVE_CITY_NOT_WORK_CITY']
+    df['NUM_DIFF_IN_REGION_LEVEL'] = df['REG_REGION_NOT_LIVE_REGION'] + df['REG_REGION_NOT_WORK_REGION'] + df['LIVE_REGION_NOT_WORK_REGION']
+    df['NUM_DIFF_IN_AREA'] = df['NUM_DIFF_IN_REGION_LEVEL'] + df['NUM_DIFF_IN_CITY_LEVEL']
+    document_cols_except3=['FLAG_DOCUMENT_2', 'FLAG_DOCUMENT_4', 'FLAG_DOCUMENT_5', 'FLAG_DOCUMENT_6','FLAG_DOCUMENT_7', 'FLAG_DOCUMENT_8',
+            'FLAG_DOCUMENT_9', 'FLAG_DOCUMENT_10', 'FLAG_DOCUMENT_11', 'FLAG_DOCUMENT_12', 'FLAG_DOCUMENT_13','FLAG_DOCUMENT_14', 'FLAG_DOCUMENT_15',
+            'FLAG_DOCUMENT_16', 'FLAG_DOCUMENT_17', 'FLAG_DOCUMENT_18', 'FLAG_DOCUMENT_19', 'FLAG_DOCUMENT_20','FLAG_DOCUMENT_21' ]
+    df['NUM_DOCUMENT_PROVIDED_EXCEPT3']=df.loc[:,document_cols_except3].sum(axis=1)
+    df['NUM_DOCUMENT_PROVIDED_EXCEPT3'].replace({3:2,4:2},inplace=True)
+
+    # 丢弃
+    mapped_feilds = []
+    drop_feilds = [
+        'AMT_REQ_CREDIT_BUREAU_HOUR',
+        'AMT_REQ_CREDIT_BUREAU_DAY',
+        'AMT_REQ_CREDIT_BUREAU_WEEK',
+        'AMT_REQ_CREDIT_BUREAU_MON',
+        'AMT_REQ_CREDIT_BUREAU_YEAR',
+        'CNT_FAM_MEMBERS',
+    ]
+    drop_feilds = drop_feilds + ['FLAG_DOCUMENT_%d' % num for num in range(2, 22) if num!=3]
+    for col in df.columns:
+        if '_MAPPED' in col:
+            mapped_feilds.append(col[:-7])
+    df = df[df.columns[~df.columns.isin(mapped_feilds+drop_feilds)]]
+
+    df, cat_cols = utils.one_hot_encoder(df, config.NAN_AS_CAtEGORY)
+
+    return df
+    
 
 def get_feature_from_bru(bru, brub):
 
